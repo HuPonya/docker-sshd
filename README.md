@@ -14,6 +14,9 @@ Configure the container with the following environment variables or optionally m
 - `SFTP_CHROOT` if in sftp only mode sftp will be chrooted to this directory. Default "/data"
 - `GATEWAY_PORTS` if "true" sshd will allow gateway ports
 - `TCP_FORWARDING` if "true" sshd will allow TCP forwarding
+- `IDLE_EXIT` if "true" script will check ssh connections, kill sshd when connection idle
+- `IDLE_CHECK_INTERVAL` check alive script interval time. Default 5 minutes
+- `IDLE_CHECK_MAX_COUNT` number of idle max count
 
 ## SSH Host Keys
 

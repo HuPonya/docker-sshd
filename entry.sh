@@ -166,19 +166,44 @@ stop() {
     local pid=$(cat /var/run/$DAEMON/$DAEMON.pid)
     # Set TERM
     kill -SIGTERM "${pid}"
-    # Wait for exit
-    wait "${pid}"
     # All done.
     echo "Done."
+    exit 0
+}
+
+check_conn_alive() {
+    set +e
+    local cur_chk_num=1
+    : ${IDLE_CHECK_INTERVAL:='5m'}
+    : ${IDLE_CHECK_MAX_COUNT:='3'}
+    while true; do
+        sleep ${IDLE_CHECK_INTERVAL}
+        netstat -tn | grep -E '.*:22.*ESTABLISHED' > /dev/null 2>&1
+        if [[ $? == 0 ]];then
+            cur_chk_num=0
+        else
+            cur_chk_num=$((cur_chk_num+1))
+            if [[ "${cur_chk_num}" == "${IDLE_CHECK_MAX_COUNT}" ]]; then
+                echo "SSH connect idle tiemout! now exit..."
+                stop
+            fi
+        fi
+    done
 }
 
 echo "Running $@"
 if [ "$(basename $1)" == "$DAEMON" ]; then
     trap stop SIGINT SIGTERM
-    $@ &
+    $@ > /var/log/sshd.log 2>&1 &
     pid="$!"
     mkdir -p /var/run/$DAEMON && echo "${pid}" > /var/run/$DAEMON/$DAEMON.pid
-    wait "${pid}" && exit $?
+    if [[ "${IDLE_EXIT}" == "true" ]]; then
+        # Enable IDLE_EXIT
+        check_conn_alive
+    else
+        wait "${pid}" && exit $?
+    fi
+    
 else
     exec "$@"
 fi
